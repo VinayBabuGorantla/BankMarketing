@@ -1,6 +1,5 @@
 import os
 import sys
-
 import numpy as np
 import pandas as pd
 import dill
@@ -11,51 +10,74 @@ from sklearn.model_selection import GridSearchCV
 
 from src.exception import CustomException
 
-def save_object(file_path,obj):
+def save_object(file_path, obj):
+    '''
+    Saves an object to a file using dill for serialization.
+    '''
     try:
-        dir_path=os.path.dirname(file_path)
-        
-        os.makedirs(dir_path,exist_ok=True)
-        
-        with open(file_path,"wb") as file_obj:
-            dill.dump(obj,file_obj)
+        # Create directory if it does not exist
+        dir_path = os.path.dirname(file_path)
+        os.makedirs(dir_path, exist_ok=True)
+
+        # Save the object to the specified file path
+        with open(file_path, "wb") as file_obj:
+            dill.dump(obj, file_obj)
             
     except Exception as e:
-        raise CustomException(e,sys)
+        raise CustomException(e, sys)
+
+def evaluate_models(X_train, y_train, X_test, y_test, models, param):
+    '''
+    Trains multiple models using GridSearchCV and evaluates their performance.
     
-def evaluate_models(X_train, y_train,X_test,y_test,models,param):
+    Parameters:
+    X_train, y_train: Training dataset
+    X_test, y_test: Testing dataset
+    models: Dictionary of models to be trained
+    param: Dictionary of hyperparameters for each model
+    
+    Returns:
+    A dictionary containing the test scores for each model.
+    '''
     try:
         report = {}
 
         for i in range(len(list(models))):
-                model = list(models.values())[i]
-                para=param[list(models.keys())[i]]
+            model = list(models.values())[i]
+            para = param[list(models.keys())[i]]
 
-                gs = GridSearchCV(model,para,cv=3)
-                gs.fit(X_train,y_train)
+            # Perform Grid Search to find the best hyperparameters
+            gs = GridSearchCV(model, para, cv=3)
+            gs.fit(X_train, y_train)
 
-                model.set_params(**gs.best_params_)
-                model.fit(X_train,y_train)
+            # Set the best parameters to the model
+            model.set_params(**gs.best_params_)
 
-                #model.fit(X_train, y_train)  # Train model
+            # Fit the model with the training data
+            model.fit(X_train, y_train)
 
-                y_train_pred = model.predict(X_train)
+            # Make predictions for training and testing data
+            y_train_pred = model.predict(X_train)
+            y_test_pred = model.predict(X_test)
 
-                y_test_pred = model.predict(X_test)
+            # Calculate accuracy for both training and testing data
+            train_model_score = accuracy_score(y_train, y_train_pred)
+            test_model_score = accuracy_score(y_test, y_test_pred)
 
-                train_model_score = accuracy_score(y_train, y_train_pred)
-
-                test_model_score = accuracy_score(y_test, y_test_pred)
-
-                report[list(models.keys())[i]] = test_model_score
+            # Store the test score in the report dictionary
+            report[list(models.keys())[i]] = test_model_score
 
         return report
 
     except Exception as e:
         raise CustomException(e, sys)
-    
+
 def load_object(file_path):
+    '''
+    Loads a serialized object from a file using pickle.
+    '''
     try:
+        # Open the file and load the object
         with open(file_path, "rb") as file_obj:
             return pickle.load(file_obj)
 

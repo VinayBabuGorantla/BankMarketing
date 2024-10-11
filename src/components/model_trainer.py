@@ -3,49 +3,59 @@ import sys
 from dataclasses import dataclass
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier,GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
 
-from sklearn.metrics import accuracy_score
-
 from src.exception import CustomException
 from src.logger import logging
-from src.utils import save_object,evaluate_models
+from src.utils import save_object, evaluate_models
 
 @dataclass
 class ModelTrainerConfig:
-        trained_model_file_path=os.path.join("artifacts","model.pkl")
-    
+    '''
+    Configuration for saving the trained model file.
+    '''
+    trained_model_file_path: str = os.path.join("artifacts", "model.pkl")
+
 class ModelTrainer:
     def __init__(self):
-        self.model_trainer_config=ModelTrainerConfig()
-    
-    def initiate_model_trainer(self,train_array,test_array):
+        '''
+        Initializes the model trainer configuration.
+        '''
+        self.model_trainer_config = ModelTrainerConfig()
+
+    def initiate_model_trainer(self, train_array, test_array):
+        '''
+        Function to train and evaluate multiple models with hyperparameter tuning.
+        - Splits train and test data.
+        - Trains models with hyperparameters using cross-validation.
+        - Evaluates models and selects the best one.
+        '''
         try:
-            logging.info("Splitting Train and Test input data")
-            X_train,y_train,X_test,y_test=(
-                train_array[:,:-1],
-                train_array[:,-1],
-                test_array[:,:-1],
-                test_array[:,-1]
-            )
+            logging.info("Splitting train and test data into features and target variables.")
             
-            models={
+            # Splitting the train and test data
+            X_train, y_train = train_array[:, :-1], train_array[:, -1]
+            X_test, y_test = test_array[:, :-1], test_array[:, -1]
+            
+            # Define the models to be trained
+            models = {
                 "Logistic Regression": LogisticRegression(),
                 "Decision Tree": DecisionTreeClassifier(),
                 "Random Forest": RandomForestClassifier(),
                 "AdaBoost": AdaBoostClassifier(),
                 "Gradient Boosting": GradientBoostingClassifier(),
                 "XGBClassifier": XGBClassifier(),
-                "CatBoosting": CatBoostClassifier(verbose=False),
+                "CatBoosting": CatBoostClassifier(verbose=False)
             }
-            # Define the parameter grid as per your provided dictionary
+
+            # Define the hyperparameter grid
             params = {
                 "Decision Tree": {
-                    'criterion': ['gini', 'entropy', 'log_loss'],  # Modified for classification
+                    'criterion': ['gini', 'entropy', 'log_loss']  # Modified for classification
                 },
                 "Random Forest": {
                     'n_estimators': [8, 16, 32, 64, 128, 256]
@@ -71,34 +81,39 @@ class ModelTrainer:
                     'algorithm': ['SAMME']
                 }
             }
-            
-            model_report:dict=evaluate_models(X_train=X_train,y_train=y_train,X_test=X_test,y_test=y_test,
-                                             models=models,param=params)
-            
-            ## To get best model score from dict
-            best_model_score = max(sorted(model_report.values()))
 
-            ## To get best model name from dict
+            logging.info("Starting model evaluation with hyperparameter tuning.")
+            
+            # Evaluate models with cross-validation and return the report
+            model_report: dict = evaluate_models(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test, models=models, param=params)
 
-            best_model_name = list(model_report.keys())[
-                list(model_report.values()).index(best_model_score)
-            ]
+            # Identify the best model by score
+            best_model_score = max(model_report.values())
+            best_model_name = list(model_report.keys())[list(model_report.values()).index(best_model_score)]
             best_model = models[best_model_name]
 
-            if best_model_score<0.6:
-                raise CustomException("No best model found")
-            logging.info(f"Best found model on both training and testing dataset")
+            logging.info(f"Best model found: {best_model_name} with score: {best_model_score}")
 
+            if best_model_score < 0.6:
+                raise CustomException("No best model found with an accuracy score above the threshold of 0.6.")
+
+            logging.info(f"Saving the best model: {best_model_name} to {self.model_trainer_config.trained_model_file_path}")
+
+            # Save the best model
             save_object(
                 file_path=self.model_trainer_config.trained_model_file_path,
                 obj=best_model
             )
 
-            predicted=best_model.predict(X_test)
+            # Make predictions with the best model
+            logging.info("Predicting on the test dataset using the best model.")
+            predictions = best_model.predict(X_test)
 
-            r2_square = accuracy_score(y_test, predicted)
-            return r2_square
-        
+            # Calculate accuracy score
+            accuracy = accuracy_score(y_test, predictions)
+            logging.info(f"Accuracy of the best model on the test data: {accuracy}")
+
+            return accuracy
+
         except Exception as e:
-            raise CustomException(e,sys)
-    
+            raise CustomException(e, sys)

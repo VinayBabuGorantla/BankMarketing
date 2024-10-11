@@ -11,6 +11,7 @@
             background-color: #f8f9fa;
             padding: 20px;
         }
+
         .container {
             text-align: center;
             margin-top: 50px;
@@ -19,9 +20,11 @@
             background-color: #ffffff;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+
         h1 {
             color: #007bff;
         }
+
         h2 {
             margin-top: 20px;
             color: #343a40;
@@ -35,10 +38,10 @@
         <h1>Welcome to the Bank Marketing Campaign Predictor</h1>
         <p>Click the button below to predict the campaign response based on your input.</p>
 
-        <a href="/predictdata" class="btn btn-primary btn-lg" aria-label="Go to Bank Campaign Predictor">Go to Bank Campaign Predictor</a>
+        <a href="/predictdata" class="btn btn-primary btn-lg" role="button" aria-label="Go to Bank Campaign Predictor">Go to Bank Campaign Predictor</a>
         <br><br>
         <p>Train the model using the provided training data.</p>
-        <a href="/train" class="btn btn-secondary btn-lg" aria-label="Train the Model">Train Model</a>
+        <a href="/train" class="btn btn-secondary btn-lg" role="button" aria-label="Train the Model">Train Model</a>
 
         <!-- Display evaluation report if available -->
         {% if evaluation_report %}
